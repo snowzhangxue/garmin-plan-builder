@@ -1,0 +1,1 @@
+This is a tools to help building garmin plan easier. You don't need to go thru the garmin UI to create the plan. Simply decribe your training plan or even upload a picture and the tools will create the plan, upload to your Garmin account.
