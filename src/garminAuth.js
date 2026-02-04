@@ -26,7 +26,9 @@ function usernameFromSessionKey(key) {
 async function validateSessionForUser({ username } = {}) {
   if (!username) return null;
 
-  const client = new GarminConnect({ username, password: "" });
+  // GarminConnect requires a non-empty password in the constructor even when we only intend
+  // to use token-based auth. Use a placeholder here; token load + profile fetch will validate.
+  const client = new GarminConnect({ username, password: "__token__" });
   const db = await initSessionStore();
   const sessionKey = sessionKeyForUser(username);
   const existingSession = await getSession(db, sessionKey);
