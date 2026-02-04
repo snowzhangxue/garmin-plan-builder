@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const http = require("http");
 
-const { loginGarmin } = require("./garminAuth");
+const { loginGarmin, validateSessionForUser, listValidUsers } = require("./garminAuth");
 const { fetchActivitySummaryForDate } = require("./garminActivities");
 const { generateActivitySummary } = require("./openAiSummary");
 const { loadConfig } = require("./config");
@@ -11,37 +11,59 @@ const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "127.0.0.1";
 const PUBLIC_DIR = path.join(__dirname, "public");
 
-// Reuse a single Garmin client across requests to avoid re-auth on every click.
-let cachedClient = null;
-let cachedUsername = null;
-let loginInFlight = null;
+// Reuse Garmin clients across requests per username.
+const cachedClients = new Map();
+const loginInflight = new Map();
 
-function clearGarminClient() {
-  cachedClient = null;
-  cachedUsername = null;
-  loginInFlight = null;
+function clearGarminClient(username) {
+  if (username) {
+    cachedClients.delete(username);
+    loginInflight.delete(username);
+    return;
+  }
+  cachedClients.clear();
+  loginInflight.clear();
 }
 
 async function getGarminClient({ username, password }) {
-  if (cachedClient && cachedUsername === username) {
-    return cachedClient;
+  if (!username) {
+    throw new Error("Username is required");
   }
 
-  if (loginInFlight && cachedUsername === username) {
-    return loginInFlight;
+  if (cachedClients.has(username)) {
+    return cachedClients.get(username);
   }
 
-  cachedUsername = username;
-  loginInFlight = (async () => {
+  if (loginInflight.has(username)) {
+    return loginInflight.get(username);
+  }
+
+  const inflightPromise = (async () => {
+    // First try: use an existing token-only session (no password needed).
+    const existing = await validateSessionForUser({ username });
+    if (existing?.client) {
+      cachedClients.set(username, existing.client);
+      return existing.client;
+    }
+
+    // If no session, require password.
+    if (!password) {
+      const error = new Error("Password required");
+      error.code = "PASSWORD_REQUIRED";
+      throw error;
+    }
+
     const result = await loginGarmin({ username, password });
-    cachedClient = result.client;
-    return cachedClient;
+    cachedClients.set(username, result.client);
+    return result.client;
   })();
 
+  loginInflight.set(username, inflightPromise);
+
   try {
-    return await loginInFlight;
+    return await inflightPromise;
   } finally {
-    loginInFlight = null;
+    loginInflight.delete(username);
   }
 }
 
@@ -110,36 +132,33 @@ const server = http.createServer(async (req, res) => {
     return sendFile(res, path.join(PUBLIC_DIR, "app.js"), "text/javascript");
   }
 
-  if (req.method === "GET" && req.url === "/api/config") {
-    const config = loadOptionalConfig();
-    if (!config.username) {
+  if (req.method === "GET" && req.url === "/api/sessions") {
+    try {
+      const usernames = await listValidUsers();
       return sendJson(res, 200, {
+        ok: true,
+        usernames
+      });
+    } catch (error) {
+      console.error("Unable to list sessions:", { message: error.message });
+      return sendJson(res, 500, {
         ok: false,
-        message:
-          "Missing Garmin credentials. Copy config/garmin-config.sample.json to config/garmin-config.json and fill in username/password."
+        message: "Unable to list sessions."
       });
     }
-
-    return sendJson(res, 200, {
-      ok: true,
-      username: config.username
-    });
   }
 
   if (req.method === "POST" && req.url === "/api/activity-summary") {
     try {
-      const config = loadOptionalConfig();
       const payload = await parseJsonBody(req);
+      const username = payload?.username?.trim();
+      const password = payload?.password;
       const date = payload?.date;
 
-      const username = config.username?.trim();
-      const password = config.password;
-
-      if (!username || !password) {
+      if (!username) {
         return sendJson(res, 400, {
           ok: false,
-          message:
-            "Missing Garmin credentials in config/garmin-config.json (username/password)."
+          message: "Username is required."
         });
       }
 
@@ -150,7 +169,26 @@ const server = http.createServer(async (req, res) => {
         });
       }
 
-      const client = await getGarminClient({ username, password });
+      const config = loadOptionalConfig();
+
+      let client;
+      try {
+        client = await getGarminClient({ username, password });
+      } catch (error) {
+        if (error.code === "PASSWORD_REQUIRED") {
+          return sendJson(res, 401, {
+            ok: false,
+            needsLogin: true,
+            message: "No active session for this user. Please enter a password to login."
+          });
+        }
+
+        console.error("Garmin client init failed:", { message: error.message });
+        return sendJson(res, 500, {
+          ok: false,
+          message: "Unable to authenticate with Garmin."
+        });
+      }
 
       let summaries;
       try {
@@ -164,7 +202,7 @@ const server = http.createServer(async (req, res) => {
           message: error.message,
           status: error.status
         });
-        clearGarminClient();
+        clearGarminClient(username);
         const freshClient = await getGarminClient({ username, password });
         summaries = await fetchActivitySummaryForDate({
           client: freshClient,

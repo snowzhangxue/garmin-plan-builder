@@ -17,8 +17,8 @@
             activity for any day.
           </p>
           <div class="note">
-            Your Garmin credentials are read from <code>config/garmin-config.json</code> on the server.
-            The UI never asks for your password.
+            We reuse a saved session token when available. If there’s no active session for the selected user,
+            you’ll be prompted for a password to login once.
           </div>
         </div>
       </section>
@@ -27,12 +27,27 @@
         <form id="summary-form" class="card">
           <h2>Garmin account</h2>
           <div class="note" id="config-status">
-            Loading configured Garmin account...
+            Loading saved sessions...
           </div>
-          <div class="summary-row">
-            <span class="label">Username</span>
-            <span id="configured-username" class="value">—</span>
-          </div>
+
+          <label class="field">
+            <span>Username</span>
+            <input
+              type="text"
+              name="username"
+              id="username-input"
+              list="username-options"
+              autocomplete="username"
+              required
+            />
+            <datalist id="username-options"></datalist>
+          </label>
+
+          <label class="field hidden" id="password-field">
+            <span>Password (only needed if no active session)</span>
+            <input type="password" name="password" autocomplete="current-password" />
+          </label>
+
           <label class="field">
             <span>Activity date</span>
             <input type="date" name="date" required />

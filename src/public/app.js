@@ -7,37 +7,74 @@ const summaryHr = document.querySelector("#summary-hr");
 const summaryMetrics = document.querySelector("#summary-metrics");
 const summaryNarrative = document.querySelector("#summary-narrative");
 const submitButton = form.querySelector("button[type=\"submit\"]");
-const configuredUsername = document.querySelector("#configured-username");
+const usernameInput = document.querySelector("#username-input");
+const usernameOptions = document.querySelector("#username-options");
+const passwordField = document.querySelector("#password-field");
 const configStatus = document.querySelector("#config-status");
 
-async function loadConfiguredAccount() {
+function setPasswordRequired(required) {
+  if (required) {
+    passwordField.classList.remove("hidden");
+    const input = passwordField.querySelector("input");
+    if (input) input.required = true;
+  } else {
+    passwordField.classList.add("hidden");
+    const input = passwordField.querySelector("input");
+    if (input) {
+      input.required = false;
+      input.value = "";
+    }
+  }
+}
+
+async function loadSessions() {
   try {
-    const response = await fetch("/api/config");
+    const response = await fetch("/api/sessions");
     const data = await response.json();
 
     if (!response.ok || !data.ok) {
-      configuredUsername.textContent = "Not configured";
-      configStatus.textContent =
-        data.message ||
-        "Missing Garmin credentials. Please create config/garmin-config.json.";
+      configStatus.textContent = data.message || "Unable to load sessions.";
       configStatus.style.color = "#b42318";
       submitButton.disabled = true;
       return;
     }
 
-    configuredUsername.textContent = data.username;
-    configStatus.textContent =
-      "Using credentials from config/garmin-config.json.";
+    const usernames = data.usernames || [];
+    usernameOptions.innerHTML = "";
+
+    if (usernames.length === 0) {
+      configStatus.textContent =
+        "No saved sessions found yet. Enter a username and password to login.";
+      configStatus.style.color = "var(--ink-muted)";
+      setPasswordRequired(true);
+      submitButton.disabled = false;
+      return;
+    }
+
+    for (const username of usernames) {
+      const option = document.createElement("option");
+      option.value = username;
+      usernameOptions.appendChild(option);
+    }
+
+    // Preselect the first known username for convenience.
+    if (!usernameInput.value) {
+      usernameInput.value = usernames[0];
+    }
+
+    configStatus.textContent = "Select an account and pick a date.";
     configStatus.style.color = "var(--ink-muted)";
+
+    // Password is optional when a session exists; server will request it if needed.
+    setPasswordRequired(false);
   } catch (error) {
-    configuredUsername.textContent = "Not available";
-    configStatus.textContent = "Unable to load config status.";
+    configStatus.textContent = "Unable to load sessions.";
     configStatus.style.color = "#b42318";
     submitButton.disabled = true;
   }
 }
 
-loadConfiguredAccount();
+loadSessions();
 
 function setStatus(message, tone = "neutral") {
   statusEl.textContent = message;
@@ -103,6 +140,8 @@ form.addEventListener("submit", async (event) => {
 
   const formData = new FormData(form);
   const payload = {
+    username: formData.get("username"),
+    password: formData.get("password"),
     date: formData.get("date")
   };
 
@@ -118,13 +157,20 @@ form.addEventListener("submit", async (event) => {
     const data = await response.json();
 
     if (!response.ok || !data.ok) {
+      if (data && data.needsLogin) {
+        setPasswordRequired(true);
+      }
+
       setStatus(
-        data.message || "Login failed. Please check your details.",
+        data.message || "Request failed. Please check your details.",
         "error"
       );
       setSummary(undefined);
       return;
     }
+
+    // On success, hide password prompt again.
+    setPasswordRequired(false);
 
     setStatus("Summary ready.");
     setSummary(data.summary);

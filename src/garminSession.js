@@ -44,9 +44,15 @@ async function deleteSession(db, key) {
   await db.run("DELETE FROM sessions WHERE key = ?", key);
 }
 
+async function listSessionKeys(db) {
+  const rows = await db.all("SELECT key FROM sessions ORDER BY key ASC");
+  return rows.map((row) => row.key);
+}
+
 module.exports = {
   initSessionStore,
   getSession,
   saveSession,
-  deleteSession
+  deleteSession,
+  listSessionKeys
 };
