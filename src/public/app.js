@@ -102,35 +102,35 @@ function setSummary(summary) {
   summaryNarrative.textContent =
     summary.narrative || "Summary is unavailable right now.";
 
-  const activities = summary.activities || [];
-  const typeText =
-    activities.length > 0
-      ? activities.map((item) => `${item.type} (${item.count})`).join(", ")
-      : "Activity";
-  summaryType.textContent = typeText;
+  const days = summary.days || [];
+  const windowText =
+    summary.startDate && summary.endDate
+      ? `${summary.startDate} → ${summary.endDate}`
+      : "8-day window";
 
-  const avg =
-    activities.length === 1 ? activities[0].heartRate?.average : null;
-  const max = activities.length === 1 ? activities[0].heartRate?.max : null;
-  const hrText =
-    typeof avg === "number"
-      ? `Avg ${avg} bpm${typeof max === "number" ? ` · Max ${max} bpm` : ""}`
-      : activities.length === 1
-        ? "No heart rate data"
-        : "Heart rate listed per activity type";
-  summaryHr.textContent = hrText;
+  const daysWithTraining = days.filter((d) => (d.activities || []).length > 0);
+
+  summaryType.textContent = `${windowText} · ${daysWithTraining.length}/${days.length} days with training`;
+
+  const lastDay = days.length ? days[days.length - 1] : null;
+  const resting = lastDay?.wellness?.heartRate?.resting;
+  summaryHr.textContent =
+    typeof resting === "number" ? `Resting HR ${resting} bpm` : "Resting HR unavailable";
 
   summaryMetrics.textContent =
-    activities.length > 0
-      ? activities
-          .map((item) => {
-            const metricText = item.metrics?.length
-              ? item.metrics.join(" · ")
-              : "No metrics";
-            return `${item.type}: ${metricText}`;
-          })
-          .join(" | ")
-      : "No additional metrics";
+    days
+      .map((d) => {
+        const activityText = (d.activities || [])
+          .map((a) => `${a.type}(${a.count})`)
+          .join(", ");
+        const sleepMin = d.wellness?.sleep?.durationMinutes;
+        const sleepText =
+          typeof sleepMin === "number"
+            ? `sleep ${Math.round(sleepMin / 60)}h${String(sleepMin % 60).padStart(2, "0")}`
+            : "sleep ?";
+        return `${d.date}: ${activityText || "no training"} · ${sleepText}`;
+      })
+      .join(" | ") || "No data";
 }
 
 form.addEventListener("submit", async (event) => {
