@@ -117,20 +117,41 @@ function setSummary(summary) {
   summaryHr.textContent =
     typeof resting === "number" ? `Resting HR ${resting} bpm` : "Resting HR unavailable";
 
-  summaryMetrics.textContent =
-    days
-      .map((d) => {
-        const activityText = (d.activities || [])
-          .map((a) => `${a.type}(${a.count})`)
-          .join(", ");
-        const sleepMin = d.wellness?.sleep?.durationMinutes;
-        const sleepText =
-          typeof sleepMin === "number"
-            ? `sleep ${Math.round(sleepMin / 60)}h${String(sleepMin % 60).padStart(2, "0")}`
-            : "sleep ?";
-        return `${d.date}: ${activityText || "no training"} · ${sleepText}`;
-      })
-      .join(" | ") || "No data";
+  summaryMetrics.innerHTML = "";
+
+  if (days.length === 0) {
+    summaryMetrics.textContent = "No data";
+    return;
+  }
+
+  for (const d of days) {
+    const row = document.createElement("div");
+    row.className = "day-line";
+
+    const dateEl = document.createElement("div");
+    dateEl.className = "day-date";
+    dateEl.textContent = d.date;
+
+    const activitiesEl = document.createElement("div");
+    activitiesEl.className = "day-activities";
+
+    const activityText = (d.activities || [])
+      .map((a) => `${a.type} (${a.count})`)
+      .join(", ");
+
+    const sleepMin = d.wellness?.sleep?.durationMinutes;
+    const sleepText =
+      typeof sleepMin === "number"
+        ? `sleep ${Math.floor(sleepMin / 60)}h${String(sleepMin % 60).padStart(2, "0")}`
+        : "sleep ?";
+
+    activitiesEl.textContent = `${activityText || "no training"} · ${sleepText}`;
+
+    row.appendChild(dateEl);
+    row.appendChild(activitiesEl);
+
+    summaryMetrics.appendChild(row);
+  }
 }
 
 form.addEventListener("submit", async (event) => {
