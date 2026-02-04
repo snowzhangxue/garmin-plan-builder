@@ -210,6 +210,9 @@ h1 {
 
 .coach-body {
   padding: 0 14px 14px;
+  /* Make the expanded coach section scrollable */
+  max-height: 520px; /* ~2x previous default */
+  overflow-y: auto;
 }
 
 .coach-narrative {
@@ -219,9 +222,8 @@ h1 {
   font-size: 14px;
   line-height: 1.55;
   font-weight: 500;
-  max-height: 260px;
-  overflow: auto;
-  padding-right: 6px;
+  /* Let the container control scrolling */
+  max-height: none;
 }
 
 .highlights-row {
