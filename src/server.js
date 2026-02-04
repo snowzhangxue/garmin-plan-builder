@@ -3,9 +3,16 @@ const path = require("path");
 const http = require("http");
 
 const { loginGarmin, validateSessionForUser, listValidUsers } = require("./garminAuth");
-const { fetchActivitySummaryForDate } = require("./garminActivities");
-const { generateActivitySummary } = require("./openAiSummary");
+const { fetchActivitySummaryForDateRange } = require("./garminActivities");
+const { fetchWellnessForDate } = require("./garminWellness");
+const { generateEightDaySummaryAndPlan } = require("./llmSummary");
 const { loadConfig } = require("./config");
+const {
+  getTrailingDateRange,
+  addDaysUTC,
+  formatDateUTC,
+  parseDateUTC
+} = require("./dateUtils");
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "127.0.0.1";
@@ -190,31 +197,54 @@ const server = http.createServer(async (req, res) => {
         });
       }
 
-      let summaries;
+      const range = getTrailingDateRange(date, 7);
+
+      function listDatesInclusive(startDateString, endDateString) {
+        const start = parseDateUTC(startDateString);
+        const end = parseDateUTC(endDateString);
+        if (!start || !end) return [];
+        const dates = [];
+        let cursor = start;
+        while (cursor <= end) {
+          dates.push(formatDateUTC(cursor));
+          cursor = addDaysUTC(cursor, 1);
+        }
+        return dates;
+      }
+
+      let activityRange;
       try {
-        summaries = await fetchActivitySummaryForDate({
+        activityRange = await fetchActivitySummaryForDateRange({
           client,
-          date
+          startDate: range.startDate,
+          endDate: range.endDate
         });
       } catch (error) {
-        // If the cached client token is stale, clear and retry once.
         console.warn("Fetch failed; retrying with fresh Garmin login.", {
           message: error.message,
           status: error.status
         });
         clearGarminClient(username);
         const freshClient = await getGarminClient({ username, password });
-        summaries = await fetchActivitySummaryForDate({
+        activityRange = await fetchActivitySummaryForDateRange({
           client: freshClient,
-          date
+          startDate: range.startDate,
+          endDate: range.endDate
         });
       }
 
-      if (!summaries) {
-        return sendJson(res, 200, {
-          ok: true,
-          summary: null,
-          message: "No activities found for that date."
+      const dateList = listDatesInclusive(range.startDate, range.endDate);
+      const activitiesByDate = new Map(
+        (activityRange?.days || []).map((day) => [day.date, day.activities])
+      );
+
+      const days = [];
+      for (const d of dateList) {
+        const wellness = await fetchWellnessForDate({ client, date: d });
+        days.push({
+          date: d,
+          activities: activitiesByDate.get(d) || null,
+          wellness
         });
       }
 
@@ -231,12 +261,13 @@ const server = http.createServer(async (req, res) => {
       let narrative = "";
       if (apiKey) {
         try {
-          narrative = await generateActivitySummary({
+          narrative = await generateEightDaySummaryAndPlan({
             apiKey,
             model,
             provider,
-            date,
-            summaries
+            startDate: range.startDate,
+            endDate: range.endDate,
+            days
           });
         } catch (error) {
           console.error("LLM summary failed:", {
@@ -254,7 +285,9 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, {
         ok: true,
         summary: {
-          activities: summaries,
+          startDate: range.startDate,
+          endDate: range.endDate,
+          days,
           narrative
         }
       });

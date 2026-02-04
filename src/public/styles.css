@@ -181,14 +181,79 @@ h1 {
   font-size: 15px;
 }
 
-.narrative-row {
+/* Coach summary accordion */
+.coach-details {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.coach-summary {
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  padding: 12px 14px;
+}
+
+.coach-summary::-webkit-details-marker {
+  display: none;
+}
+
+.coach-hint {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+.coach-body {
+  padding: 0 14px 14px;
+  /* Make the expanded coach section scrollable */
+  max-height: 520px; /* ~2x previous default */
+  overflow-y: auto;
+}
+
+.coach-narrative {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: "SF Pro Text", "Helvetica Neue", "Nimbus Sans L", sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  font-weight: 500;
+  /* Let the container control scrolling */
+  max-height: none;
+}
+
+.highlights-row {
   align-items: flex-start;
 }
 
-.narrative {
-  max-width: 360px;
+.highlights {
+  width: 100%;
+  text-align: left;
   font-weight: 500;
-  line-height: 1.5;
+  display: grid;
+  gap: 6px;
+}
+
+.highlights .day-line {
+  display: grid;
+  grid-template-columns: 118px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.highlights .day-date {
+  color: var(--ink-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.highlights .day-activities {
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 .label {

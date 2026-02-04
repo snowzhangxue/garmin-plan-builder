@@ -29,8 +29,38 @@ function getIsoWeekRangeUTC(year, week) {
   };
 }
 
+function parseDateUTC(dateString) {
+  if (!dateString) return null;
+  const [y, m, d] = String(dateString).split("-").map((part) => Number(part));
+  if (!y || !m || !d) return null;
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+function addDaysUTC(date, days) {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
+function getTrailingDateRange(endDateString, daysBackInclusive = 7) {
+  const end = parseDateUTC(endDateString);
+  if (!end) {
+    throw new Error(`Invalid date: ${endDateString}`);
+  }
+  const start = addDaysUTC(end, -daysBackInclusive);
+  return {
+    start,
+    end,
+    startDate: formatDateUTC(start),
+    endDate: formatDateUTC(end)
+  };
+}
+
 module.exports = {
+  addDaysUTC,
   formatDateUTC,
   getIsoWeekRangeUTC,
-  getIsoWeekStartUTC
+  getIsoWeekStartUTC,
+  getTrailingDateRange,
+  parseDateUTC
 };
