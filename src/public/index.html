@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Garmin Activity Summary</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="hero">
+        <div class="hero-content">
+          <p class="eyebrow">Garmin Connect</p>
+          <h1>Daily activity clarity.</h1>
+          <p class="subhead">
+            Sign in to your Garmin account and get a quick summary of your
+            activity for any day.
+          </p>
+          <div class="note">
+            Your Garmin credentials are read from <code>config/garmin-config.json</code> on the server.
+            The UI never asks for your password.
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <form id="summary-form" class="card">
+          <h2>Garmin account</h2>
+          <div class="note" id="config-status">
+            Loading configured Garmin account...
+          </div>
+          <div class="summary-row">
+            <span class="label">Username</span>
+            <span id="configured-username" class="value">—</span>
+          </div>
+          <label class="field">
+            <span>Activity date</span>
+            <input type="date" name="date" required />
+          </label>
+          <button type="submit" class="primary">
+            Get summary
+          </button>
+          <p id="status" class="status" aria-live="polite"></p>
+        </form>
+
+        <div class="card summary-card">
+          <h2>Summary</h2>
+          <div id="summary-empty" class="summary-empty">
+            Submit your Garmin credentials and a date to see the result here.
+          </div>
+          <div id="summary-content" class="summary-content hidden">
+            <div class="summary-row narrative-row">
+              <span class="label">Coach summary</span>
+              <span id="summary-narrative" class="value narrative"></span>
+            </div>
+            <div class="summary-row">
+              <span class="label">Activity</span>
+              <span id="summary-type" class="value"></span>
+            </div>
+            <div class="summary-row">
+              <span class="label">Heart rate</span>
+              <span id="summary-hr" class="value"></span>
+            </div>
+            <div class="summary-row">
+              <span class="label">Highlights</span>
+              <span id="summary-metrics" class="value"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
