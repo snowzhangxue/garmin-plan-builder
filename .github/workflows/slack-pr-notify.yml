@@ -13,8 +13,9 @@ jobs:
         with:
           payload: |
             {
-              "channel": "#dev",
+              "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
               "text": "*PR update in <${{ github.server_url }}/${{ github.repository }}|${{ github.repository }}>*\n• *${{ github.event.pull_request.title }}*\n• <${{ github.event.pull_request.html_url }}|PR #${{ github.event.pull_request.number }}> by ${{ github.actor }}\n• Action: `${{ github.event.action }}`\n• Branch: `${{ github.event.pull_request.head.ref }}` → `${{ github.event.pull_request.base.ref }}`"
             }
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
