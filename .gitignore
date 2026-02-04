@@ -1,0 +1,12 @@
+# Local secrets
+config/garmin-config.json
+
+# Generated artifacts
+plans/
+node_modules/
+
+# Local runtime data (sessions/cache)
+data/
+
+# OS cruft
+.DS_Store

@@ -1,0 +1,8 @@
+{
+  "username": "your-garmin-username",
+  "password": "your-garmin-password",
+  "openaiApiKey": "your-openai-key",
+  "geminiApiKey": "your-gemini-key",
+  "summaryProvider": "gemini",
+  "summaryModel": "gemini-1.5-flash"
+}

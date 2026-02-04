@@ -1,0 +1,18 @@
+{
+  "name": "garmin-plan-builder",
+  "version": "0.1.0",
+  "description": "Create Garmin training plans from plain-English weekly descriptions.",
+  "main": "src/cli.js",
+  "scripts": {
+    "generate-plans": "node src/cli.js",
+    "garmin-login": "node src/login.js",
+    "web": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@gooin/garmin-connect": "^1.6.1",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
+  },
+  "license": "MIT"
+}
