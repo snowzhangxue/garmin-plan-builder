@@ -160,8 +160,21 @@ function aggregateActivities(summaries) {
 }
 
 async function fetchActivitySummaryForDate({ client, date } = {}) {
-  if (!date) {
-    throw new Error("Date is required to fetch activity summary.");
+  const range = await fetchActivitySummaryForDateRange({
+    client,
+    startDate: date,
+    endDate: date
+  });
+  return range?.days?.[0]?.activities || null;
+}
+
+async function fetchActivitySummaryForDateRange({
+  client,
+  startDate,
+  endDate
+} = {}) {
+  if (!startDate || !endDate) {
+    throw new Error("startDate and endDate are required.");
   }
 
   if (!client) {
@@ -169,8 +182,9 @@ async function fetchActivitySummaryForDate({ client, date } = {}) {
   }
 
   const pageSize = 20;
-  const maxPages = 10;
-  const summaries = [];
+  const maxPages = 20;
+
+  const byDate = new Map();
 
   for (let page = 0; page < maxPages; page += 1) {
     const activities = await client.getActivities(page * pageSize, pageSize);
@@ -179,26 +193,39 @@ async function fetchActivitySummaryForDate({ client, date } = {}) {
     }
 
     for (const activity of activities) {
-      if (getActivityDate(activity) === date) {
-        summaries.push(summarizeActivity(activity));
-      }
+      const activityDate = getActivityDate(activity);
+      if (!activityDate) continue;
+      if (activityDate < startDate || activityDate > endDate) continue;
+      if (!byDate.has(activityDate)) byDate.set(activityDate, []);
+      byDate.get(activityDate).push(summarizeActivity(activity));
     }
 
     const oldestActivityDate = getActivityDate(
       activities[activities.length - 1]
     );
-    if (oldestActivityDate && oldestActivityDate < date) {
+    if (oldestActivityDate && oldestActivityDate < startDate) {
       break;
     }
   }
 
-  if (summaries.length === 0) {
-    return null;
+  const days = [];
+  for (const [date, summaries] of Array.from(byDate.entries()).sort((a, b) =>
+    a[0].localeCompare(b[0])
+  )) {
+    days.push({
+      date,
+      activities: summaries.length ? aggregateActivities(summaries) : null
+    });
   }
 
-  return aggregateActivities(summaries);
+  return {
+    startDate,
+    endDate,
+    days
+  };
 }
 
 module.exports = {
-  fetchActivitySummaryForDate
+  fetchActivitySummaryForDate,
+  fetchActivitySummaryForDateRange
 };

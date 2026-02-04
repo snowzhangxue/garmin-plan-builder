@@ -64,10 +64,16 @@
             Submit your Garmin credentials and a date to see the result here.
           </div>
           <div id="summary-content" class="summary-content hidden">
-            <div class="summary-row narrative-row">
-              <span class="label">Coach summary</span>
-              <span id="summary-narrative" class="value narrative"></span>
-            </div>
+            <details class="coach-details" open>
+              <summary class="coach-summary">
+                <span class="label">Coach summary</span>
+                <span class="value coach-hint">Expand / collapse</span>
+              </summary>
+              <div class="coach-body">
+                <pre id="summary-narrative" class="coach-narrative"></pre>
+              </div>
+            </details>
+
             <div class="summary-row">
               <span class="label">Activity</span>
               <span id="summary-type" class="value"></span>
@@ -76,9 +82,9 @@
               <span class="label">Heart rate</span>
               <span id="summary-hr" class="value"></span>
             </div>
-            <div class="summary-row">
+            <div class="summary-row highlights-row">
               <span class="label">Highlights</span>
-              <span id="summary-metrics" class="value"></span>
+              <div id="summary-metrics" class="value highlights"></div>
             </div>
           </div>
         </div>
