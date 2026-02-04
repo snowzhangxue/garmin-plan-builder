@@ -1,0 +1,20 @@
+name: Slack PR notifications
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post to Slack
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {
+              "channel": "#dev",
+              "text": "*PR update in <${{ github.server_url }}/${{ github.repository }}|${{ github.repository }}>*\n• *${{ github.event.pull_request.title }}*\n• <${{ github.event.pull_request.html_url }}|PR #${{ github.event.pull_request.number }}> by ${{ github.actor }}\n• Action: `${{ github.event.action }}`\n• Branch: `${{ github.event.pull_request.head.ref }}` → `${{ github.event.pull_request.base.ref }}`"
+            }
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
