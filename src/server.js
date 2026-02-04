@@ -11,6 +11,40 @@ const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "127.0.0.1";
 const PUBLIC_DIR = path.join(__dirname, "public");
 
+// Reuse a single Garmin client across requests to avoid re-auth on every click.
+let cachedClient = null;
+let cachedUsername = null;
+let loginInFlight = null;
+
+function clearGarminClient() {
+  cachedClient = null;
+  cachedUsername = null;
+  loginInFlight = null;
+}
+
+async function getGarminClient({ username, password }) {
+  if (cachedClient && cachedUsername === username) {
+    return cachedClient;
+  }
+
+  if (loginInFlight && cachedUsername === username) {
+    return loginInFlight;
+  }
+
+  cachedUsername = username;
+  loginInFlight = (async () => {
+    const result = await loginGarmin({ username, password });
+    cachedClient = result.client;
+    return cachedClient;
+  })();
+
+  try {
+    return await loginInFlight;
+  } finally {
+    loginInFlight = null;
+  }
+}
+
 function loadOptionalConfig() {
   try {
     return loadConfig(process.cwd());
@@ -116,23 +150,27 @@ const server = http.createServer(async (req, res) => {
         });
       }
 
-      let loginResult;
+      const client = await getGarminClient({ username, password });
+
+      let summaries;
       try {
-        loginResult = await loginGarmin({ username, password });
-      } catch (error) {
-        console.error("Garmin login failed:", {
-          message: error.message
+        summaries = await fetchActivitySummaryForDate({
+          client,
+          date
         });
-        return sendJson(res, 401, {
-          ok: false,
-          message: "Login failed. Please check your credentials and try again."
+      } catch (error) {
+        // If the cached client token is stale, clear and retry once.
+        console.warn("Fetch failed; retrying with fresh Garmin login.", {
+          message: error.message,
+          status: error.status
+        });
+        clearGarminClient();
+        const freshClient = await getGarminClient({ username, password });
+        summaries = await fetchActivitySummaryForDate({
+          client: freshClient,
+          date
         });
       }
-
-      const summaries = await fetchActivitySummaryForDate({
-        client: loginResult.client,
-        date
-      });
 
       if (!summaries) {
         return sendJson(res, 200, {
